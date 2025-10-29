@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                             QHBoxLayout, QLabel, QLineEdit, QPushButton, QTableWidget,
                             QTableWidgetItem)
 from PyQt6.QtCore import Qt
-import mysql.connector
+import pymysql
 from dotenv import load_dotenv
 
 class UserManagementApp(QMainWindow):
@@ -49,12 +49,16 @@ class UserManagementApp(QMainWindow):
         self.load_users()
 
     def get_db_connection(self):
-        return mysql.connector.connect(
-            database=os.getenv('DATABASE_DB'),
+        # Use PyMySQL (pure Python) to avoid crashes caused by native C extensions
+        # mysql-connector-python won't work
+        return pymysql.connect(
+            host=os.getenv('DATABASE_HOST'),
             user=os.getenv('DATABASE_USER'),
             password=os.getenv('DATABASE_PASS'),
-            host=os.getenv('DATABASE_HOST'),
-            port=int(os.getenv('DATABASE_PORT'))
+            database=os.getenv('DATABASE_DB'),
+            port=int(os.getenv('DATABASE_PORT')) if os.getenv('DATABASE_PORT') else 3306,
+            cursorclass=pymysql.cursors.Cursor,
+            autocommit=False,
         )
 
     def load_users(self):
@@ -100,7 +104,13 @@ class UserManagementApp(QMainWindow):
         except Exception as e:
             print(f"Error adding user: {e}")
 
-app = QApplication(sys.argv)
-window = UserManagementApp()
-window.show()
-sys.exit(app.exec())
+if __name__ == "__main__":
+    try:
+        app = QApplication(sys.argv)
+        window = UserManagementApp()
+        window.show()
+        sys.exit(app.exec())
+    except Exception:
+        # Print full traceback to the console for debugging
+        traceback.print_exc()
+        sys.exit(1)
